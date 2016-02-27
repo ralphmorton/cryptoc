@@ -34,7 +34,7 @@ data BlockChain = Block {
     bcBlockData :: BlockData,
     bcBlockSig :: Sig,
     bcHashPointer :: Maybe (B.ByteString, BlockChain)
-}
+} deriving Show
 
 data BlockData = BlockData Transaction Sig deriving Show
 
@@ -113,14 +113,24 @@ scroogeTransact sc trans sig pk = do
     case (verifyTransaction bc trans sig pk) of
         False -> return False
         True -> do
+            let trans' = addRecipientBalances bc pk trans
             let bhash = fmap fst bpointer
             let bhash' = hash $ assembleBlockSigData bid bdata bhash
-            let bdata' = BlockData trans sig
+            let bdata' = BlockData trans' sig
             let bid' = bid + 1
             (Just bsig') <- sign (scPrivateKey sc) . assembleBlockSigData bid' bdata' $ Just bhash'
             let bc' = Block bid' bdata' bsig' $ Just (bhash', bc)
             atomically $ writeTVar tv bc'
             return True
+
+addRecipientBalances :: BlockChain -> Address -> Transaction -> Transaction
+addRecipientBalances bc pk (Transaction cid outputs) = Transaction cid $ fmap (addRecipientBalance bc pk) outputs
+
+addRecipientBalance :: BlockChain -> Address -> (Address, Double) -> (Address, Double)
+addRecipientBalance bc pk (pkr, val)
+    | pk /= pkr = (pkr, val + bal)
+    | otherwise = (pkr, val)
+    where bal = maybe 0 fst $ findFundsOwnedBy bc pkr
 
 verifyTransaction :: BlockChain -> Transaction -> Sig -> Address -> Bool
 verifyTransaction bc trans sig pk = coinOwnerOK && transSigOK
