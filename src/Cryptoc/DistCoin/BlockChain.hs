@@ -39,7 +39,7 @@ import System.Random (getStdRandom, randomR)
 --
 
 diffTarget :: Integer
-diffTarget = 400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+diffTarget = 4 * (10 ^ 110)
 
 transactionReward :: Double
 transactionReward = 0.001
