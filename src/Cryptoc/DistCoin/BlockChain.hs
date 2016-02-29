@@ -69,12 +69,13 @@ checkBlock block blockChain = nextOK && (nonceValid block) && all (transactionVa
 --
 
 transactionValid :: BlockChain -> SignedTransaction -> Bool
-transactionValid bc (t@(Transaction sender input outputs), sig) = sigOK && ownerOK && balOK
+transactionValid bc (t@(Transaction sender input outputs), sig) = sigOK && ownerOK && coinUnspent && balOK
     where
     msg = BC.pack $ show t
     sigOK = verify sender msg sig
     coinInfo = fromMaybe (sender, 0) $ getCoinInfo bc input
     ownerOK = fst coinInfo == sender
+    coinUnspent = any (== input) . fmap fst $ getCoinsOwnedBy bc sender
     outputValue = sum $ fmap snd outputs
     balOK = abs (outputValue - snd coinInfo) < 0.0001
 
